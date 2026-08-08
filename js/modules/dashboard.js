@@ -1,0 +1,89 @@
+/* 概览：一眼看清数据积累情况和待办 */
+App.reg({
+  key: 'dashboard', name: '概览', icon: '◈', group: '日常',
+  sub: '数据积累与待办',
+
+  async render(el) {
+    const s = await App.api('/meta/stats');
+    const c = s.counts, t = s.totals;
+    const wan = v => Math.round((v || 0) / 100) / 100;
+
+    el.innerHTML = `
+      ${App.kpis([
+      { label: '累计产值', value: wan(t.output), unit: '万元', tone: 'good' },
+      { label: '材料费', value: wan(t.material), unit: '万元' },
+      { label: '人工费', value: wan(t.labor), unit: '万元' },
+      { label: '其他成本', value: wan(t.cost), unit: '万元' },
+      {
+        label: '毛利', value: wan(t.output - t.material - t.labor - t.cost), unit: '万元',
+        tone: (t.output - t.material - t.labor - t.cost) >= 0 ? 'good' : 'bad'
+      },
+    ])}
+
+      <div class="card">
+        <h3>数据积累 <span class="tag">${s.date_range.from ?
+        `${s.date_range.from} ~ ${s.date_range.to}` : '还没有数据'}</span></h3>
+        <div class="kpis" style="margin:0">
+          ${[['产值记录', c.output, 'output_rec'], ['材料消耗', c.material, 'material_rec'],
+        ['人员投入', c.labor, 'labor_rec'], ['成本记录', c.cost, 'cost_rec'],
+        ['形象进度', c.progress, 'progress_rec'], ['措施记录', c.measure, 'measure'],
+        ['部位节点', c.wbs, 'wbs'], ['阶段总结', c.summary, '']]
+        .map(([n, v]) => `<div class="kpi"><div class="l">${n}</div>
+              <div class="v">${v}<span class="u">条</span></div></div>`).join('')}
+        </div>
+      </div>
+
+      ${s.recent_output.length ? `<div class="card"><h3>近期产值走势</h3>
+        ${Chart.render([{
+          type: 'line', title: '',
+          labels: s.recent_output.map(r => r.d.slice(5)),
+          series: [{ name: '产值(万元)', data: s.recent_output.map(r => r.a) }]
+        }])}</div>` : ''}
+
+      <div class="card">
+        <h3>在办措施 <span class="tag">${s.no_eval_cnt ?
+        `${s.no_eval_cnt} 条措施尚未做效果评估` : '措施均已评估'}</span></h3>
+        ${s.pending_measures.length ? `<div class="tbl-wrap"><table>
+          <thead><tr><th style="min-width:100px">日期</th><th>问题</th><th>措施</th>
+          <th style="min-width:80px">状态</th></tr></thead><tbody>
+          ${s.pending_measures.map(m => `<tr><td>${m.biz_date}</td>
+            <td>${App.esc(m.issue || '-')}</td><td>${App.esc(m.content || '-')}</td>
+            <td><span class="pill warn">${m.status}</span></td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="dim">没有在办措施。</div>'}
+      </div>
+
+      <div class="card">
+        <h3>下一步</h3>
+        <div class="rep-grid">
+          ${this.guide(c).map(g => `<div class="rep-btn" onclick="location.hash='${g.k}'">
+            <div class="g">${g.tag}</div><div class="n">${g.t}</div><div class="d">${g.d}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  },
+
+  guide(c) {
+    const g = [];
+    if (!c.wbs || c.wbs <= 4) g.push({
+      k: 'basedata', tag: '① 先做这个', t: '维护部位与计划节点',
+      d: '把你的分部分项、计划开完工日期录进去。这是进度对比和产值归集的骨架。'
+    });
+    if (!c.output) g.push({
+      k: 'import', tag: '② 导数据', t: '导入产值台账',
+      d: '把现有的 Excel 日报/台账导进来，列映射一次就能存成模板复用。'
+    });
+    g.push({
+      k: 'query', tag: '查询', t: '查询中心',
+      d: '产值、材料、人员、进度、措施、盈亏，点按钮取数。'
+    });
+    g.push({
+      k: 'summary', tag: '输出', t: '生成阶段总结',
+      d: '选个区间，自动出完整阶段报告和优化建议，可导出。'
+    });
+    if (c.measure === 0) g.push({
+      k: 'measure', tag: '闭环', t: '记录措施与效果',
+      d: '现场为纠偏做的动作记下来并评估效果，总结才能体现管理价值。'
+    });
+    return g;
+  }
+});
