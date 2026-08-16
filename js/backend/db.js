@@ -36,6 +36,8 @@
 
   // ---------------- IndexedDB 持久化（仅浏览器） ----------------
   var IDB_NAME = 'pmdb', IDB_KEY = 'pmdb', _saveTimer = null;
+  // DB 缓存版本：data/project.db 更新后需 +1，强制浏览器丢弃旧 IndexedDB 缓存重新拉取
+  var IDB_VER = 2;
   function idbOpen() {
     return new Promise(function (resolve, reject) {
       var req = indexedDB.open(IDB_NAME, 1);
@@ -49,7 +51,12 @@
     return new Promise(function (resolve) {
       var tx = idb.transaction(IDB_NAME, 'readonly');
       var req = tx.objectStore(IDB_NAME).get(IDB_KEY);
-      req.onsuccess = function () { resolve(req.result || null); };
+      req.onsuccess = function () {
+        var val = req.result;
+        // 旧版直接存裸字节（非对象），或版本不符 → 视为无缓存，重新从仓库拉取
+        if (val && typeof val === 'object' && val.__v === IDB_VER && val.bytes) resolve(val.bytes);
+        else resolve(null);
+      };
       req.onerror = function () { resolve(null); };
     });
   }
@@ -63,7 +70,7 @@
         var idb = await idbOpen();
         await new Promise(function (resolve, reject) {
           var tx = idb.transaction(IDB_NAME, 'readwrite');
-          tx.objectStore(IDB_NAME).put(bytes, IDB_KEY);
+          tx.objectStore(IDB_NAME).put({ __v: IDB_VER, bytes: bytes }, IDB_KEY);
           tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error); };
         });
       } catch (e) { console.warn('persist failed', e); }
