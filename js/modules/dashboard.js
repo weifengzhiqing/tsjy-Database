@@ -21,21 +21,36 @@ App.reg({
       theoryWan = Math.round(theoryWan * 100) / 100; // 万元
     } catch (e) { theoryWan = 0; }
 
+    // 材料费 / 人工费：按 数量×单价 计算（与产值口径一致，单价取「元」，合计转万元）。
+    // 材料：material_rec(qty × price)；人工：labor_rec(work_hours × unit_cost)。无单价时回退到账面 amount。
+    let materialWan = 0, materialUnit = '', laborWan = 0;
+    try {
+      const DB = window.DB;
+      const mr = DB.query("SELECT COALESCE(SUM(qty*price),0) AS v, (SELECT unit FROM material_rec WHERE unit IS NOT NULL AND unit<>'' LIMIT 1) AS u FROM material_rec")[0];
+      materialWan = mr.v / 10000; materialUnit = mr.u || '';
+      if (materialWan === 0 && t.material) materialWan = wan(t.material);
+      const lr = DB.query("SELECT COALESCE(SUM(work_hours*unit_cost),0) AS v FROM labor_rec")[0];
+      laborWan = lr.v / 10000;
+      if (laborWan === 0 && t.labor) laborWan = wan(t.labor);
+    } catch (e) {}
+
     el.innerHTML = `
       ${App.kpis([
       { label: '累计计价产值', value: wan(t.output), unit: '万元', tone: 'good' },
       { label: '理论产值(进度×清单)', value: (theoryWan / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: '亿元', tone: 'k' },
-      { label: '材料费', value: wan(t.material), unit: '万元' },
-      { label: '人工费', value: wan(t.labor), unit: '万元' },
+      { label: '材料费·数量×单价', value: materialWan.toFixed(2), unit: '万元' },
+      { label: '人工费·工时×单价', value: laborWan.toFixed(2), unit: '万元' },
       { label: '其他成本', value: wan(t.cost), unit: '万元' },
       {
-        label: '毛利', value: wan(t.output - t.material - t.labor - t.cost), unit: '万元',
-        tone: (t.output - t.material - t.labor - t.cost) >= 0 ? 'good' : 'bad'
+        label: '毛利', value: wan(t.output - materialWan - laborWan - t.cost), unit: '万元',
+        tone: (t.output - materialWan - laborWan - t.cost) >= 0 ? 'good' : 'bad'
       },
     ])}
       <div class="dim" style="margin:-6px 0 14px;line-height:1.7">
         「累计计价产值」来自产值台账(output_rec)，为实际报量/计价口径；「理论产值」= 开累完成量×清单综合单价，
-        来自「进度完成情况」。两者口径不同：理论产值含未计价部分，且隧道单位口径待复核（可能偏高），仅作进度参考。
+        来自「进度完成情况」。两者口径不同：理论产值含未计价部分，且隧道单位口径待复核（可能偏高），仅作进度参考。<br>
+        「材料费」= Σ(数量×单价)，「人工费」= Σ(工时×单价)，单价单位见各记录 unit 列（如 元/吨、元/工日），
+        合计以万元展示；台账为空时显示 0，填入数据后自动计算。
       </div>
 
       <div class="card">
