@@ -152,7 +152,7 @@
       },
       totals: { output: s('output_rec'), material: s('material_rec'), labor: s('labor_rec'), cost: s('cost_rec') },
       date_range: { from: rng.a, to: rng.b },
-      recent_output: recent.map(function (r) { return { d: r.biz_date, a: Math.round((r.a || 0) / 10000 * 100) / 100 }; }),
+      recent_output: recent.map(function (r) { return { d: r.biz_date, a: Math.round((r.a || 0) * 100) / 100 }; }),
       pending_measures: DB.query(
         "SELECT id,biz_date,issue,content,status FROM measure WHERE status IN ('计划中','执行中') ORDER BY biz_date DESC LIMIT 10"),
       no_eval_cnt: (DB.queryOne(
