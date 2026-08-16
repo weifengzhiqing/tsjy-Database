@@ -24,6 +24,9 @@ App.reg({
     // 清单单价索引
     const boqMap = {};
     boq.forEach(b => { boqMap[b.code] = b; });
+    // 清单名称 -> 编码（导入时若用户填了清单名称而非编码，可反查）
+    const nameMap = {};
+    boq.forEach(b => { if (!nameMap[b.name]) nameMap[b.name] = b.code; });
 
     // 计算列：单价 + 开累产值（万元）
     prog.forEach(r => {
@@ -116,6 +119,99 @@ App.reg({
       App.ok('已导出：进度-清单映射复核.csv');
     }
 
+    /* ---------- Excel/CSV 导入映射（回填 boq_code） ---------- */
+    function invalidList(inv) {
+      if (!inv.length) return '';
+      const items = inv.map(x => `<li>${App.esc(x.text || '')} — <span class="warn">${App.esc(x.reason)}</span></li>`).join('');
+      return `<details style="margin-top:10px"><summary class="dim">查看跳过明细（${inv.length} 行）</summary>
+        <ul style="line-height:1.8;margin:8px 0 0 18px">${items}</ul></details>`;
+    }
+    async function importMap(file) {
+      const preview = document.getElementById('pc-import-preview');
+      const setPreview = html => { preview.innerHTML = html; };
+      try {
+        if (typeof XLSX === 'undefined') { App.err('Excel 解析库未加载，请刷新页面后重试'); return; }
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+        if (!rows.length) { App.err('文件为空或无可识别数据'); return; }
+
+        const hdr = Object.keys(rows[0]);
+        const pick = aliases => {
+          for (const a of aliases) {
+            const k = hdr.find(h => h && String(h).trim().toLowerCase() === a.toLowerCase());
+            if (k) return k;
+          }
+          return null;
+        };
+        const kId = pick(['id', '行id', 'row id', '序号']);
+        const kCode = pick(['boq_code', '清单编码', '清单代码', 'code']);
+        const kName = pick(['清单名称', '清单子目', '名称', 'boq_name']);
+        const kMajor = pick(['专业', 'major']);
+        const kUnit = pick(['单位工程', 'unit_project']);
+        const kItem = pick(['施工部位', 'item']);
+        if (!kCode) { App.err('未找到「清单编码 / boq_code」列，无法导入'); return; }
+
+        const idIndex = {}; prog.forEach(r => idIndex[r.id] = r);
+        const keyIndex = {}; prog.forEach(r => { keyIndex[(r.major + '|' + r.unit_project + '|' + r.item).replace(/\s+/g, '')] = r; });
+
+        const valid = {}, invalid = [];
+        rows.forEach(row => {
+          let code = String(row[kCode] || '').trim();
+          if (!code && kName) {
+            const nm = String(row[kName] || '').trim();
+            if (nm && nameMap[nm]) code = nameMap[nm];
+          }
+          if (!code) return; // 空编码：不更新
+          let target = null;
+          if (kId) {
+            const idv = parseInt(String(row[kId] || '').trim(), 10);
+            if (idv && idIndex[idv]) target = idIndex[idv];
+          }
+          if (!target && (kMajor || kUnit || kItem)) {
+            const key = ((row[kMajor] || '') + '|' + (row[kUnit] || '') + '|' + (row[kItem] || '')).replace(/\s+/g, '');
+            target = keyIndex[key];
+          }
+          const label = (kId ? ('id=' + (row[kId] || '')) : (row[kUnit] || '') + '/' + (row[kItem] || ''));
+          if (!target) { invalid.push({ text: label, reason: '找不到对应进度行' }); return; }
+          if (!boqMap[code]) { invalid.push({ text: label, reason: '清单编码不存在：' + code }); return; }
+          valid[target.id] = code; // 同 id 以最后一行覆盖
+        });
+
+        const updates = Object.keys(valid).map(id => ({ id: parseInt(id, 10), code: valid[id] }));
+        if (!updates.length) {
+          App.err('没有可更新的有效映射' + (invalid.length ? '（' + invalid.length + ' 行无效）' : ''));
+          if (invalid.length) setPreview(`<div class="card" style="margin:14px 0">${invalidList(invalid)}</div>`);
+          return;
+        }
+
+        setPreview(`<div class="card" style="margin:14px 0">
+          <h3>导入预览</h3>
+          <div class="dim" style="line-height:1.9">
+            将更新 <b>${updates.length}</b> 行清单映射，跳过 <b>${invalid.length}</b> 行（id 找不到 / 编码不存在）。
+            <br><span class="warn">注意</span>：导入只改本机浏览器缓存（IndexedDB），不会写回 GitHub 上的 data/project.db；若要固化为全站数据，请导出 db 后由我重新推送。
+          </div>
+          <div style="margin-top:10px">
+            <button class="tb btn-p" id="pc-apply">应用更新</button>
+            <button class="tb" id="pc-cancel-import">取消</button>
+          </div>
+          ${invalidList(invalid)}
+        </div>`);
+
+        document.getElementById('pc-apply').onclick = () => {
+          const argList = updates.map(u => [u.code, u.id]);
+          DB.execMany('UPDATE progress_complete SET boq_code=? WHERE id=?', argList);
+          App.ok('已导入并更新 ' + updates.length + ' 行清单映射（本机缓存已自动保存）');
+          preview.innerHTML = '';
+          draw();
+        };
+        document.getElementById('pc-cancel-import').onclick = () => { preview.innerHTML = ''; };
+      } catch (err) {
+        App.err('解析失败：' + (err && err.message ? err.message : err));
+      }
+    }
+
     /* ---------- 渲染 ---------- */
     const tabs = [
       ['all', '全部'], ['隧道', '隧道'], ['桥梁', '桥梁'], ['路基', '路基'], ['review', '映射复核']
@@ -126,14 +222,24 @@ App.reg({
         ${tabs.map(([k, n]) => `<button class="tb ${k === 'all' ? 'btn-p' : ''}" data-t="${k}">${n}</button>`).join('')}
         <span class="sp"></span>
         <button class="tb" id="pc-export">导出映射复核(CSV)</button>
+        <button class="tb" id="pc-import">导入映射(Excel/CSV)</button>
+        <input type="file" id="pc-file" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
+      <div id="pc-import-preview"></div>
       <div id="pc-kpi"></div>
       <div id="pc-note"></div>
       <div id="pc-body"></div>`;
 
     document.getElementById('pc-export').onclick = exportCSV;
+    document.getElementById('pc-import').onclick = () => document.getElementById('pc-file').click();
+    document.getElementById('pc-file').onchange = e => {
+      const f = e.target.files && e.target.files[0];
+      if (f) importMap(f);
+      e.target.value = '';
+    };
     el.querySelectorAll('.tb[data-t]').forEach(b => b.onclick = () => {
       cur = b.dataset.t;
+      document.getElementById('pc-import-preview').innerHTML = '';
       el.querySelectorAll('.tb[data-t]').forEach(x => x.classList.toggle('btn-p', x.dataset.t === cur));
       draw();
     });
