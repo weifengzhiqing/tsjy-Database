@@ -6,8 +6,8 @@ App.reg({
   async render(el) {
     const s = await App.api('/meta/stats');
     const c = s.counts, t = s.totals;
-    // 各台账 amount 字段单位为「万元」（见 output_rec.unit），不再 ÷10000
-    const wan = v => Math.round((v || 0) * 100) / 100;
+    // 各台账 amount 字段原始单位为「元」（Excel 导入原值），展示时统一转「万元」即 ÷10000
+    const wan = v => Math.round((v || 0) / 10000 * 100) / 100;
 
     // 理论产值 = progress_complete.开累 × boq_ref.综合单价（与「进度完成情况」同源）
     let theoryWan = 0;
@@ -18,7 +18,7 @@ App.reg({
       DB.query('SELECT cum_qty,boq_code FROM progress_complete').forEach(r => {
         if (r.boq_code && bp[r.boq_code]) theoryWan += (r.cum_qty || 0) * bp[r.boq_code];
       });
-      theoryWan = Math.round(theoryWan * 100) / 100; // 万元
+      theoryWan = Math.round(theoryWan * 100) / 100; // 元（原始精度）
     } catch (e) { theoryWan = 0; }
 
     // 材料费 / 人工费：按 数量×单价 计算（与产值口径一致，单价取「元」，合计转万元）。
@@ -37,13 +37,13 @@ App.reg({
     el.innerHTML = `
       ${App.kpis([
       { label: '累计计价产值', value: wan(t.output), unit: '万元', tone: 'good' },
-      { label: '理论产值(进度×清单)', value: (theoryWan / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: '亿元', tone: 'k' },
+      { label: '理论产值(进度×清单)', value: wan(theoryWan), unit: '万元', tone: 'k' },
       { label: '材料费·数量×单价', value: materialWan.toFixed(2), unit: '万元' },
       { label: '人工费·工时×单价', value: laborWan.toFixed(2), unit: '万元' },
       { label: '其他成本', value: wan(t.cost), unit: '万元' },
       {
-        label: '毛利', value: wan(t.output - materialWan - laborWan - t.cost), unit: '万元',
-        tone: (t.output - materialWan - laborWan - t.cost) >= 0 ? 'good' : 'bad'
+        label: '毛利', value: (wan(t.output) - materialWan - laborWan - wan(t.cost)).toFixed(2), unit: '万元',
+        tone: (wan(t.output) - materialWan - laborWan - wan(t.cost)) >= 0 ? 'good' : 'bad'
       },
     ])}
       <div class="dim" style="margin:-6px 0 14px;line-height:1.7">
@@ -70,7 +70,7 @@ App.reg({
         ${Chart.render([{
           type: 'line', title: '',
           labels: s.recent_output.map(r => r.d.slice(5)),
-          series: [{ name: '产值(万元)', data: s.recent_output.map(r => r.a) }]
+          series: [{ name: '产值(万元)', data: s.recent_output.map(r => (r.a / 10000).toFixed(2)) }]
         }])}</div>` : ''}
 
       <div class="card">
