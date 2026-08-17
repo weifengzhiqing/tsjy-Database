@@ -17,6 +17,18 @@ const Chart = {
 
   _empty() { return '<div class="dim" style="padding:30px;text-align:center">暂无数据</div>'; },
 
+  // 取所有数据点的「合理」最大值：
+  //   若调用方传 yAxisMax/suggestedMax 则直接使用；
+  //   否则取 P95（第 95 百分位）向上 nice-round，
+  //   避免个别极值把整张图压扁（如日产值中少数高峰日）。
+  _smartMax(values, hintMax) {
+    if (hintMax && hintMax > 0) return this._nice(hintMax);
+    const arr = (values || []).filter(v => typeof v === 'number' && v > 0).sort((a, b) => a - b);
+    if (!arr.length) return 1;
+    const p95 = arr[Math.ceil(arr.length * 0.95) - 1] || arr[arr.length - 1];
+    return this._nice(p95) || 1;
+  },
+
   _nice(max) {
     if (max <= 0) return 1;
     const e = Math.pow(10, Math.floor(Math.log10(max)));
@@ -39,9 +51,9 @@ const Chart = {
     if (!labels.length) return this._empty();
     const W = 480, H = 250, PL = 46, PR = 10, PT = 12, PB = 58;
     const iw = W - PL - PR, ih = H - PT - PB;
-    let max = 0;
-    series.forEach(s => (s.data || []).forEach(v => { if (v > max) max = v; }));
-    max = this._nice(max) || 1;
+    const allVals = [];
+    series.forEach(s => (s.data || []).forEach(v => { allVals.push(Number(v) || 0); }));
+    const max = this._smartMax(allVals, c.yAxisMax || c.suggestedMax);
     const gw = iw / labels.length;
     const bw = Math.min(26, gw / (series.length + 0.6));
     let g = '';
@@ -71,9 +83,9 @@ const Chart = {
     if (!labels.length) return this._empty();
     const W = 480, H = 250, PL = 46, PR = 10, PT = 12, PB = 52;
     const iw = W - PL - PR, ih = H - PT - PB;
-    let max = 0;
-    series.forEach(s => (s.data || []).forEach(v => { if (v > max) max = v; }));
-    max = this._nice(max) || 1;
+    const allVals = [];
+    series.forEach(s => (s.data || []).forEach(v => { allVals.push(Number(v) || 0); }));
+    const max = this._smartMax(allVals, c.yAxisMax || c.suggestedMax);
     const step = labels.length > 1 ? iw / (labels.length - 1) : 0;
     let g = '';
     for (let i = 0; i <= 4; i++) {
@@ -143,5 +155,5 @@ const Chart = {
       `<span><i style="background:${this.COLORS[i % 8]}"></i>${this._esc(s.name || '')}</span>`).join('') + '</div>';
   },
 
-  _esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+  _esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '<', '>': '>' }[c])); }
 };
