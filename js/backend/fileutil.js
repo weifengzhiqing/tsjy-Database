@@ -47,9 +47,9 @@
     if (typeof v === 'number' && isFinite(v)) {
       // Excel 日期序列号（含 1900 闰年 bug，基准 1899-12-30）
       if (v > 20000 && v < 60000) {
-        var base = new Date(1899, 11, 30);
-        var dt = new Date(base.getTime() + v * 86400000);
-        return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+        // 全程用 UTC，避免本地时区把日期整体偏移一天（如北京 +8 会变成前一天）
+        var dt = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+        return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());
       }
       // 形如 20260801
       if (v >= 19000000 && v <= 29999999) {
