@@ -24,11 +24,14 @@
   }
 
   // 读取工作簿对象（SheetJS workbook）
+  // 关键：不开 cellDates。开启后 SheetJS 会把日期转成 JS Date 对象，而在本地时区下该对象会偏移到
+  // 「前一天 23:59」（如 6/25 -> 6/24 23:59:17），导致 getDate() 取到前一天。这里让日期保持 Excel
+  // 序列号，由 toDate 用纯整数日历（UTC 基准）换算，行与行精确对应、零时区误差。
   function readWorkbook(filename) {
     var b64 = _b64Of(filename);
     var X = XLSX();
     var wb;
-    try { wb = X.read(b64, { type: 'base64', cellDates: true }); }
+    try { wb = X.read(b64, { type: 'base64' }); }
     catch (e) { wb = X.read(b64, { type: 'binary' }); }
     return wb;
   }
@@ -85,6 +88,11 @@
   function cellStr(c) {
     if (c === null || c === undefined) return '';
     if (c instanceof Date) return c.getFullYear() + '-' + pad(c.getMonth() + 1) + '-' + pad(c.getDate());
+    if (typeof c === 'number' && isFinite(c)) {
+      // 未开启 cellDates 时，Excel 日期以序列号形式存在，预览按日期格式回显（与入库口径一致）
+      if (c > 20000 && c < 60000) { var ds = toDate(c); if (ds) return ds; }
+      return String(c);
+    }
     if (typeof c === 'object') {
       // SheetJS 富文本/超链接等
       if (c.t !== undefined && c.v !== undefined) return String(c.v);
