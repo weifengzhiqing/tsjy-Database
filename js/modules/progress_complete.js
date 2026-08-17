@@ -281,14 +281,14 @@ App.reg({
         const cands = candidates(r.item + ' ' + r.unit_project);
         const chip = cands.length ? cands.map(c =>
           `<button class="chip" data-id="${r.id}" data-code="${App.esc(c.code)}" title="${App.esc(c.chapter || '')}"
-            style="margin:2px 4px 2px 0;padding:3px 8px;border:1px solid #c99f5b66;border-radius:10px;background:#211d17;color:#e9e3d7;cursor:pointer;font-size:12px">
+            style="margin:2px 4px 2px 0;padding:3px 8px;border:1px solid #b07d2b66;border-radius:10px;background:#f3e8cd;color:#8a611d;cursor:pointer;font-size:12px">
             ${App.esc(c.name)} <span class="dim">${(c.price || 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}元</span></button>`).join('') : '<span class="dim">无候选</span>';
         h += `<tr>
           <td>${r.major}</td><td>${App.esc(r.unit_project)}</td><td>${App.esc(r.item)}</td><td>${App.esc(r.unit)}</td>
           <td class="num">${App.fmt(r.cum_qty, 'num')}</td>
           <td style="min-width:320px">${chip}</td>
           <td><input class="cin" data-id="${r.id}" placeholder="清单编码"
-              style="width:140px;padding:3px 6px;background:#2a241c;border:1px solid #4a4034;color:#e9e3d7;border-radius:4px">
+              style="width:140px;padding:3px 6px;background:#fcf9f3;border:1px solid #d2c6ad;color:#2b2620;border-radius:4px">
               <button class="btn-sm adopt-manual" data-id="${r.id}">确定</button></td>
         </tr>`;
       });
