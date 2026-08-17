@@ -1,6 +1,6 @@
 /* 轻量 SVG 图表：bar / line / pie。零依赖，离线可用。 */
 const Chart = {
-  COLORS: ['#c99f5b', '#86a961', '#6f9bab', '#cc6f5c', '#b08fc7', '#d4a04a', '#8fa8b8', '#a89c88'],
+  COLORS: ['#b07d2b', '#2f7d3a', '#2c6e8c', '#c23a31', '#8a5fb0', '#c58712', '#4f7f8f', '#6b6356'],
 
   render(list) {
     if (!list || !list.length) return '';
@@ -59,8 +59,8 @@ const Chart = {
     let g = '';
     for (let i = 0; i <= 4; i++) {
       const y = PT + ih - ih * i / 4;
-      g += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#332c24" stroke-width="1"/>
-            <text x="${PL - 6}" y="${y + 3.5}" fill="#7d7364" font-size="9.5" text-anchor="end">${this._num(max * i / 4)}</text>`;
+      g += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#e2dac9" stroke-width="1"/>
+            <text x="${PL - 6}" y="${y + 3.5}" fill="#6b6356" font-size="9.5" text-anchor="end">${this._num(max * i / 4)}</text>`;
     }
     labels.forEach((lb, i) => {
       const cx = PL + gw * i + gw / 2;
@@ -72,7 +72,7 @@ const Chart = {
                fill="${this.COLORS[si % 8]}" opacity=".88" rx="2"><title>${lb}: ${v}</title></rect>`;
       });
       const short = this._clip(lb, 8);
-      g += `<text x="${cx}" y="${PT + ih + 13}" fill="#a89c88" font-size="9.5"
+      g += `<text x="${cx}" y="${PT + ih + 13}" fill="#8b8170" font-size="9.5"
              text-anchor="end" transform="rotate(-38 ${cx} ${PT + ih + 13})">${this._esc(short)}</text>`;
     });
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}</svg>` + this._legend(series);
@@ -90,8 +90,8 @@ const Chart = {
     let g = '';
     for (let i = 0; i <= 4; i++) {
       const y = PT + ih - ih * i / 4;
-      g += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#332c24"/>
-            <text x="${PL - 6}" y="${y + 3.5}" fill="#7d7364" font-size="9.5" text-anchor="end">${this._num(max * i / 4)}</text>`;
+      g += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#e2dac9"/>
+            <text x="${PL - 6}" y="${y + 3.5}" fill="#6b6356" font-size="9.5" text-anchor="end">${this._num(max * i / 4)}</text>`;
     }
     series.forEach((s, si) => {
       const col = this.COLORS[si % 8];
@@ -110,7 +110,7 @@ const Chart = {
     labels.forEach((lb, i) => {
       if (i % gap) return;
       const x = PL + step * i;
-      g += `<text x="${x}" y="${PT + ih + 13}" fill="#a89c88" font-size="9.5"
+      g += `<text x="${x}" y="${PT + ih + 13}" fill="#8b8170" font-size="9.5"
              text-anchor="end" transform="rotate(-38 ${x} ${PT + ih + 13})">${this._esc(this._clip(lb, 10))}</text>`;
     });
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}</svg>` + this._legend(series);
@@ -133,18 +133,18 @@ const Chart = {
       const [x3, y3] = p(a1, r), [x4, y4] = p(a0, r);
       g += `<path d="M${x1},${y1} A${R},${R} 0 ${big},1 ${x2},${y2} L${x3},${y3}
              A${r},${r} 0 ${big},0 ${x4},${y4} Z" fill="${this.COLORS[i % 8]}" opacity=".9"
-             stroke="#282320" stroke-width="1.5"><title>${labels[i]}: ${v} (${(val / tot * 100).toFixed(1)}%)</title></path>`;
+             stroke="#d2c6ad" stroke-width="1.5"><title>${labels[i]}: ${v} (${(val / tot * 100).toFixed(1)}%)</title></path>`;
       a0 = a1;
     });
-    g += `<text x="${cx}" y="${cy - 4}" fill="#a89c88" font-size="10" text-anchor="middle">合计</text>
-          <text x="${cx}" y="${cy + 13}" fill="#e9e3d7" font-size="14" font-weight="600" text-anchor="middle">${this._num(tot)}</text>`;
+    g += `<text x="${cx}" y="${cy - 4}" fill="#8b8170" font-size="10" text-anchor="middle">合计</text>
+          <text x="${cx}" y="${cy + 13}" fill="#2b2620" font-size="14" font-weight="600" text-anchor="middle">${this._num(tot)}</text>`;
     labels.forEach((lb, i) => {
       if (i > 7) return;
       const y = 26 + i * 23;
       const val = Math.abs(Number(data[i]) || 0);
       g += `<rect x="248" y="${y - 8}" width="9" height="9" rx="2" fill="${this.COLORS[i % 8]}"/>
-            <text x="264" y="${y}" fill="#a89c88" font-size="11">${this._esc(this._clip(lb, 9))}</text>
-            <text x="${W - 8}" y="${y}" fill="#e9e3d7" font-size="11" text-anchor="end">${this._num(val)} · ${(val / tot * 100).toFixed(1)}%</text>`;
+            <text x="264" y="${y}" fill="#8b8170" font-size="11">${this._esc(this._clip(lb, 9))}</text>
+            <text x="${W - 8}" y="${y}" fill="#2b2620" font-size="11" text-anchor="end">${this._num(val)} · ${(val / tot * 100).toFixed(1)}%</text>`;
     });
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">${g}</svg>`;
   },
