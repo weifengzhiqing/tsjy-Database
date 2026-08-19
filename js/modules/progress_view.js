@@ -18,12 +18,56 @@ App.reg({
       return;
     }
 
+    // wbs_name 归一：去长度后缀 / 拆冗余父名 / 拆手动空格子部位 / 拆子部位词(出口/进口/横通道/洞门及洞口工程) / 末端“工区”归一 / 类目前缀拆分
+    // 与同步脚本 norm_wbs 同源，保证看板层级合并（如 五磊山隧道 与 五磊山隧道(6829.04m) 归并为同一节点）
+    function normParts(wbs) {
+      const CATS = ['站场路基', '区间路基', '框架涵', '桥涵', '路基', '站场'];
+      const SUBLOC = ['洞门及洞口工程', '横通道', '进口', '出口'];
+      const stripLen = s => s.replace(/\s*[（(]?\d+(\.\d+)?m[）)]?\s*$/, '');
+      const splitSubloc = p => {
+        for (const m of SUBLOC) if (p.length > m.length && p.endsWith(m)) return [p.slice(0, p.length - m.length), m];
+        return [p];
+      };
+      let parts = String(wbs || '').split('/').map(s => s.trim()).filter(Boolean);
+      const out = [];
+      parts.forEach((p, idx) => {
+        if (p.includes(' ') && idx === 0) {
+          const sp = p.split(/\s+/);
+          if (sp.length >= 2) { out.push(stripLen(sp[0])); out.push(stripLen(sp.slice(1).join(' '))); return; }
+        }
+        out.push(stripLen(p));
+      });
+      const out2 = [];
+      out.forEach(p => { if (p == null) return; splitSubloc(p).forEach(x => out2.push(x)); });
+      const root = out2[0] || '';
+      for (let i = 1; i < out2.length; i++) {
+        if (root && out2[i] && out2[i].startsWith(root)) {
+          const rest = out2[i].slice(root.length).trim();
+          out2[i] = (rest && !/^[（）()\s]*$/.test(rest)) ? rest : null;
+        }
+      }
+      const final = [];
+      out2.forEach(p => {
+        if (p == null) return;
+        if (p.endsWith('工区')) p = p.slice(0, -2);
+        let matched = false;
+        for (const cat of CATS) {
+          if (p.startsWith(cat) && p.length > cat.length && /DK|（|\(|\d/.test(p.slice(cat.length))) {
+            final.push(cat); final.push(p.slice(cat.length).trim()); matched = true; break;
+          }
+        }
+        if (!matched) final.push(p);
+      });
+      return final.filter(Boolean);
+    }
+
     const tree = { children: {}, items: {} };
-    const wbsSet = new Set();
+    const wbsSet = new Set();   // 归一后的一级工点数（隧道/桥梁/路基…），用于 KPI
     let totalCum = 0;
     recs.forEach(r => {
-      if (r.wbs_name) wbsSet.add(r.wbs_name);
-      const parts = String(r.wbs_name || '(未填部位)').split('/').map(s => s.trim()).filter(s => s);
+      const parts = normParts(r.wbs_name);
+      if (!parts.length) return;
+      wbsSet.add(parts[0]);
       let node = tree;
       parts.forEach(p => { if (!node.children[p]) node.children[p] = { children: {}, items: {} }; node = node.children[p]; });
       const it = r.item_name || '(未填项)';
