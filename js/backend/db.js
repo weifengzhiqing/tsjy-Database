@@ -37,7 +37,7 @@
   // ---------------- IndexedDB 持久化（仅浏览器） ----------------
   var IDB_NAME = 'pmdb', IDB_KEY = 'pmdb', _saveTimer = null;
   // DB 缓存版本：data/project.db 更新后需 +1，强制浏览器丢弃旧 IndexedDB 缓存重新拉取
-  var IDB_VER = 2;
+  var IDB_VER = 3;
   function idbOpen() {
     return new Promise(function (resolve, reject) {
       var req = indexedDB.open(IDB_NAME, 1);
