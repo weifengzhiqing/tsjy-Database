@@ -8,6 +8,7 @@ App.reg({
   sub: '按部位层级钻取 · 开累完成量实时累计',
 
   async render(el) {
+   try {
     const DB = window.DB;
     let recs = [];
     try {
@@ -67,5 +68,8 @@ App.reg({
         <div id="pv-tree">${recs.length ? renderNode(tree, 0) : '<div class="empty">还没有形象进度数据，去「进度快录」或「数据导入」录入吧。</div>'}</div>
         <div class="dim" style="margin-top:10px">开累完成量 = 优先取系统记录的累计完成量（如金山同步的"开累完成数量"），无累计时按完成量累加（快录/导入场景）。每日同步为"最新快照覆盖"，看板只显示最新开累，不重复累加。</div>
       </div>`;
+   } catch (e) {
+     el.innerHTML = '<div class="msg err">形象进度看板渲染失败：' + ((e && (e.stack || e.message)) || e) + '</div>';
+   }
   }
 });
