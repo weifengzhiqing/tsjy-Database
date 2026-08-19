@@ -272,7 +272,7 @@
 
         if (!rec.amount) {
           if (rec.qty && rec.price) rec.amount = Math.round(parseFloat(rec.qty) * parseFloat(rec.price) * 100) / 100;
-          else if (rec.person_count && rec.unit_cost) rec.amount = Math.round(parseFloat(rec.person_count) * parseFloat(rec.unit_cost) * 100) / 100;
+          else if (rec.person_count && rec.work_hours && rec.unit_cost) rec.amount = Math.round(parseFloat(rec.person_count) * parseFloat(rec.work_hours) * parseFloat(rec.unit_cost) * 100) / 100;
         }
         if (!rec.price && rec.amount && rec.qty) {
           try { rec.price = Math.round(parseFloat(rec.amount) / parseFloat(rec.qty) * 10000) / 10000; } catch (e) {}
