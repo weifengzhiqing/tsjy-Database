@@ -18,14 +18,14 @@ App.reg({
       return;
     }
 
-    const tree = {};
+    const tree = { children: {}, items: {} };
     const wbsSet = new Set();
     let totalCum = 0;
     recs.forEach(r => {
       if (r.wbs_name) wbsSet.add(r.wbs_name);
       const parts = String(r.wbs_name || '(未填部位)').split('/').map(s => s.trim()).filter(s => s);
       let node = tree;
-      parts.forEach(p => { if (!node[p]) node[p] = { children: {}, items: {} }; node = node[p]; });
+      parts.forEach(p => { if (!node.children[p]) node.children[p] = { children: {}, items: {} }; node = node.children[p]; });
       const it = r.item_name || '(未填项)';
       const a = node.items[it] || { unit: '', cum: 0, last: '', n: 0 };
       // 开累优先取累计完成量(cum_actual_qty，来自金山同步的开累完成数量)；无累计时回退逐条完成量累加(快录/导入场景)
