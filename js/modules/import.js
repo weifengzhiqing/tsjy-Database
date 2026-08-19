@@ -138,7 +138,7 @@ App.reg({
         </div>
         <div class="sp14"></div>
         <div class="row">
-          <label class="ck"><input type="checkbox" id="overwrite"> 覆盖导入（按业务键替换重复行）</label>
+          <label class="ck"><input type="checkbox" id="overwrite" checked> 覆盖导入（按业务键替换重复行，推荐默认勾选）</label>
           <span class="dim">勾选后，表中与本次数据「日期 + 部位 + 清单」相同的旧记录会被新值替换，而不是新增重复行</span>
         </div>
         <div class="sp14"></div>
