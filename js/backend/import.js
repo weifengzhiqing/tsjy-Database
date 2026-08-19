@@ -491,6 +491,17 @@
   routes['/import/preview'] = importPreview;
   routes['/import/run'] = importRun;
   routes['/import/rollback'] = importRollback;
+  routes['/progress/quickadd'] = function (p) {
+    var DB = window.DB;
+    if (!p.biz_date || !p.wbs_name || !p.item_name || p.actual_qty === undefined || p.actual_qty === '')
+      throw new Error('日期、部位、形象进度项、完成量均为必填');
+    var rec = { biz_date: p.biz_date, wbs_name: p.wbs_name, item_name: p.item_name,
+      unit: p.unit || '', actual_qty: parseFloat(p.actual_qty) || 0, remark: p.remark || '',
+      batch_id: 'quick_' + Date.now() };
+    DB.insertRow('progress_rec', rec);
+    if (DB.flush) DB.flush();
+    return { ok: true, rec: rec };
+  };
 
   var api = { routes: routes, TARGETS: TARGETS, SYNONYM: SYNONYM };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
